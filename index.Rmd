@@ -1,0 +1,110 @@
+---
+title: "About this Website"
+---
+
+## Introduction
+
+This website has been created to accompany the 2020 open access edition of 
+[London Lives: Poverty, Crime and the Making of a Modern City, 1690-1800](http://www.londonlives.org/book/) by Tim Hitchcock and Robert Shoemaker. It consists of the code and data used to create the new visualisations produced for the book using [R](https://cran.r-project.org/) and [R Markdown](https://bookdown.org/yihui/rmarkdown/).
+
+This site's main purpose is to document the code and methods used to make the visualisations in the book with the datasets supplied by the authors. It is *not* intended as a tutorial. There are some fairly extensive notes on chapter 2, to give an idea of my approach to the tasks, but only code comments and occasional notes in subsequent chapters.
+
+Nonetheless, it may be helpful for eg people who've worked through the basic R data wrangling lessons at the [Programming Historian](https://programminghistorian.org/en/lessons/?topic=data-manipulation), and are looking for examples and practice material using real-world data that often needs tidying and reshaping before it can be visualised.
+
+## About the Visualisations
+
+The original 2015 edition of *London Lives* contained a number of graphs that were severely constrained by the demands of traditional book formats: they were small, sometimes difficult to interpret and entirely in black and white. One of my priorities in converting the book to a new online edition was to recreate the graphs as faithfully as possible but (as with many other features of the new edition) to make better use of the online medium. I decided against making the graphs interactive, but I did want to make them clearer to read, primarily by making them larger and using colour.
+
+### Methods
+
+All the visualisations use the [Tidyverse](https://www.tidyverse.org/) and [ggplot](https://ggplot2.tidyverse.org/). Most of the graphs are quite simple line charts of time series data. Some are a little more complex, including eg faceting (aka "small multiples"), moving averages and combined line and bar graphs. Most are as close as possible to the originals; all are intended to tell the same story. Changes include the [abolition of dual axis charts](https://blog.datawrapper.de/dualaxis/) and converting some 3-D charts to 2-D because I didn't think the 3-D effect aided clarity of presentation (full disclosure: I think it rarely does).
+
+The bulk of the work consisted of extracting the required data from the spreadsheets and wrangling it into the right shape for ggplot to use. There is a lot of code re-use, with variations and extensions as needed. (I could and should have converted quite a bit of the code into functions. One day I'll remember to do that and then maybe I'll be a real programmer.)
+
+The work was carried out at intervals over the course of a few months. As a result, I might not use exactly the same methods to do the same thing throughout the project, as I learn new functions or techniques. For example, much of the data is in "wide" formats which need to be [reshaped](https://lincolnmullen.com/projects/dh-r2/data.html) to "long" formats to be visualised in ggplot. Initially I used the tidyr::gather() function for this, but half way through the tidyr developers released an update with a new and more intuitive pivot_longer() function for the same effect. I used this in parts of later chapters but decided not to rewrite the bulk of the already existing code (which should continue to work).
+
+
+### Colours
+
+A common problem with data visualisation is readability for colour blind users. I tried to ensure that all the graphs are as readable as possible: I used the [Okabe Ito colour palette](https://jfly.uni-koeln.de/color/#pallet) (as implemented by [Mike Mol](https://mikemol.github.io/technique/colorblind/2018/02/11/color-safe-palette.html)) throughout. I checked every page with the "I want to see like the colour blind" Chrome extension (I'm not sure if this is still available, but there are various other online tools).
+
+I had nearly finished work when I saw this [guide to dataviz for the colorblind](https://blog.datawrapper.de/colorblindness-part2/). It was a bit too late to take on board all of the ideas and guidance it contains (and it includes a critique of the Okabe Ito palette), but I think I had at least attempted much of it and hope that it's been effective. (One tool I had managed to forget about until I read the article and wish I'd used more is [Viz Palette](https://projects.susielu.com/viz-palette).)
+
+
+### Running the code
+
+The .Rmd files (and data) can be found [here](https://github.com/sharonhoward/llb_code).
+
+Using the .Rmd files, it should in theory be possible to replicate the graphs using the code and the [datasets](datasets/), but I can't guarantee they'll work without any adjustments in every environment. (The book was built in 2020 on a MacBook running High Sierra (OS X 10.13.6), R v3.5 and RStudio v1.2.) If you have difficulties, I may be able to answer simple queries on Twitter (@sharon_howard).
+
+
+## List of Contents
+
+The structure of this site mirrors that of the ebook. Only chapters 2 to 7 in the book contain any graphs.
+
+Full information about the datasets' original sources is in the book or the spreadsheets themselves.
+
+### Chapter 2
+
+- [2.2:  Prosecutions and commitments, 1681-1714: The Old Bailey, Bridewell and London Workhouse](chapter2.html#c-2-4)
+- [2.3:  Vice offences recorded in Lord Mayor\'s waiting and charge books, 1686-1694](chapter2.html#c-2-6)
+
+
+### Chapter 3
+
+- [3.1:  Offences prosecuted at the Old Bailey, 1707-1731](chapter3.html#c-3-3)
+- [3.2:  Old Bailey punishment sentences, 1713-1731](chapter3.html#c-3-5)
+- [3.3:  Societies for the Reformation of Manners prosecutions, 1715-1731](chapter3.html#c-3-10)
+
+### Chapter 4
+
+- [4.1:  Offences prosecuted at the Old Bailey, 1725-1750](chapter4.html#c-4-2)
+- [4.2:  St Martin in the Fields workhouse admissions, 1738-1748](chapter4.html#c-4-4)
+- [4.3:  St Clement Danes, Pauper Census, 1745](chapter4.html#c-4-5)
+- [4.4:  St Martin in the Fields Workhouse Registers, \'Dropt\' and \'Born in the house\'](chapter4.html#c-4-6)
+- [4.6:  Legal counsel at the Old Bailey, 1715-1748](chapter4.html#c-4-14)
+
+
+### Chapter 5
+
+- [5.1:  Real wage rates of London bricklayers, carpenters and their labourers, 1744-1800](chapter5.html#c-5-2)
+- [5.2:  Prosecutions and commitments, 1745-1765: Old Bailey, Bridewell and the London Workhouse](chapter5.html#c-5-4)
+- [5.3:  St Clement Danes, poor law expenditure, 1740-1765](chapter5.html#c-5-5)
+- [5.7:  Old Bailey trial reports including \'Gin\' or \'Geneva\', 1715-1780](chapter5.html#c-5-12)
+- [5.8:  Old Bailey death sentences and executions, 1749-1774](chapter5.html#c-5-17)
+- [5.9:  Old Bailey punishment sentences, 1745-1763](chapter5.html#c-5-18)
+
+
+### Chapter 6
+
+- [6.1:  Crimes prosecuted, 1763-1776: Old Bailey and Bridewell](chapter6.html#c-6-3)
+- [6.2:  Poor relief expenditure 1763-1776: St Clement Danes and St Dionis Backchurch](chapter6.html#c-6-6)
+- [6.3:  City of London vagrant expenditure, 1763-1776](chapter6.html#c-6-9)
+- [6.5:  Old Bailey punishment sentences, 1763-1776](chapter6.html#c-6-13)
+
+
+### Chapter 7
+
+- [7.2:  Escapees (attempted and actual) from prisons, hulks and transports, 1776-1786](chapter7.html#c-7-4)
+- [7.6:  Prosecutions and commitments, 1775-1789](chapter7.html#c-7-10)
+- [7.7:  Percentage of Old Bailey trials with legal counsel, 1770-1800, as reported in the *Proceedings*](chapter7.html#c-7-12)
+- [7.8:  Old Bailey punishment sentences, 1770-1790](chapter7.html#c-7-14)
+- [7.9:  Old Bailey death sentences and executions, 1775-1790](chapter7.html#c-7-15)[]{#p_x}
+- [7.10:  London whipping punishments, 1770-1799](chapter7.html#c-7-16)
+- [7.12:  St Clement Danes, poor law expenditure, 1750-1803](chapter7.html#c-7-21)
+- [7.13:  City of London vagrancy expenditure, 1776-1790](chapter7.html#c-7-23)
+
+
+## Resources
+
+A few R resources:
+
+- [Programming Historian](https://programminghistorian.org/en/lessons/?topic=data-manipulation)
+- [Digital History Methods in R](https://lincolnmullen.com/projects/dh-r2/index.html)
+- [R Cookbook](http://www.cookbook-r.com)
+- [R for Data Science](https://r4ds.had.co.nz/index.html)
+
+
+## License
+
+Text at this site is shared under a [Creative Commons Attribution Share-Alike licence (CC BY-SA)](http://creativecommons.org/licenses/by-sa/4.0/). The accompanying spreadsheets are shared under a [Creative Commons Attribution Non-Commercial licence (CC BY-NC 4.0)](https://creativecommons.org/licenses/by-nc/4.0/).

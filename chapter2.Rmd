@@ -1,0 +1,269 @@
+---
+title: "Chapter 2: Beggarman, thief: 1690--1713"
+---
+
+
+[link to chapter 2](http://www.londonlives.org/book/chapter2.html)
+
+## General notes
+
+The datasets had been released to accompany the original edition of the book and so they're already cleaner than many spreadsheets. But most of them still needed some reworking before they could be visualised. 
+
+I didn't want to manually edit any of the spreadsheets or make new versions except as a very last resort; the aim is to do all necessary tidying or reformatting within R and leave the original data untouched. 
+
+Some of the spreadsheets contain multiple tabs and include data not used in the graphs, so in some cases I had to do a bit of detective work and checking to ensure I was using the right data.
+
+All of the spreadsheets contained titles and other information on the first two lines (minimum) of the sheet, so these lines need to be skipped when reading in the data.
+
+
+## Packages
+
+
+```{r c2_packages}
+
+library(readxl) # read excel spreadsheets
+library(janitor) # utilities including clean_names for consistently formatting column names, often a problem with data in spreadsheets
+library(lubridate) # date functions
+library(scales) # ggplot scales eg %ages
+library(patchwork) # extra plot layout options
+library(tidyverse) # data wrangling, includes dplyr, tidyr and ggplot
+
+library(knitr)
+library(kableExtra)
+
+# ggplot extras ####
+
+theme_set(theme_minimal()) # set preferred ggplot theme 
+theme_update(plot.title = element_text(size = rel(1.1), hjust = 0)) # adjustments to theme
+update_geom_defaults("line", list(size = 0.85))
+```
+
+
+
+## F2.2: Prosecutions {#c-2-4}
+
+I'm not going to reproduce all the original b/w graphs, but this is quite a typical example.
+
+![](img/fig2_2.png)
+
+
+
+It's at the more complex end of the visualisations in some respects. 
+
+- the data came from multiple spreadsheet tabs which had to be combined 
+- there was data in "wide" format which needed to be reshaped
+- there were gaps in the original sources, filled with estimated values which needed to be differentiated from the known data
+
+Note the use of the clean_names() function from the [janitor](https://garthtarr.github.io/meatR/janitor.html) package. This is invaluable when importing from spreadsheets, which tend to have column names that are not consistently formed and are designed for human rather than machine readers. (R *will* handle names that contain things like spaces but they have to be enclosed in backticks, which is a bore. I find it easier to convert on importing and then make any nice display labels at the final stage when they're actually needed.) There are some other great functions in {janitor} that I ought to use more often...
+
+```{r c2_fig2_crime_pros_1681_data}
+
+# data from two separate tabs in the spreadsheet
+c2_ob <-
+  read_xlsx("datasets/Crime_Prosecutions.xlsx", sheet = "Old Bailey", skip = 2) %>%
+  clean_names(case="lower_camel")
+
+# and nb this sheet contains data in separate columns for two institutions, Bridewell and the London Workhouse.
+c2_bridewell <-
+  read_xlsx("datasets/Crime_Prosecutions.xlsx", sheet = "Bridewell", skip = 2) %>%
+  clean_names(case="lower_camel")
+
+c2_ob_brd_long <-
+# bind_rows() combines the two data frames
+# an alternative approach would be to use a full join (on the year column) and then gather
+  bind_rows(
+    c2_bridewell %>% filter(between(year, 1681,1713)) %>% 
+    # the Bridewell column was ambiguously named "estimatedValues" so (after checking that it was actually for Bridewell) I renamed it
+      select(year, bridewell, londonWorkhouse, bridewellEstimated=estimatedValues, londonWorkhouseEstimated= estimatedLondonWorkhouseValues) %>%
+    # gather() to reshape from wide to narrow format
+      gather("k", "v", bridewell:londonWorkhouseEstimated)
+    ,
+    c2_ob %>% filter(between(year, 1681, 1713)) %>% 
+      select(year, oldBailey= totalCorrected, oldBaileyEstimated = estimatedOldBaileyValues) %>%
+      gather("k", "v",oldBailey:oldBaileyEstimated)
+  )
+# why did I do gathering separately before bind rows? I don't remember, looks a bit daft...
+# using "k" and "v" ("key" and "value") as the new column names was just laziness. it's better to use something more meaningful.
+```
+
+What the Bridewell/London Workhouse data looks like before applying gather(). This is classic "wide" format spreadsheet data.
+
+```{r}
+c2_bridewell %>%
+  select(year:estimatedLondonWorkhouseValues) %>%
+  # knitr::kable() and kableExtra::kable_styling() to make nice tables
+  kable() %>% 
+  kable_styling() %>%
+  scroll_box(height="400px")
+```
+\
+And the "wide" Old Bailey data:
+
+```{r}
+c2_ob %>%
+  select(year, totalOffences, estimatedOldBaileyValues) %>%
+  kable() %>% 
+  kable_styling() %>%
+  scroll_box(height="400px")
+```
+\
+What gather() does is to put each of those columns (apart from year) on its own row. After gathering and combining the three sources into one data frame we get:
+
+```{r}
+c2_ob_brd_long %>%
+  kable() %>%
+  kable_styling() %>%
+  scroll_box(height="400px")
+```
+\
+What if I'd used a join instead? 
+
+```{r}
+
+c2_brd_ob_join <-
+c2_bridewell %>%
+  select(year, bridewell, bridewellEstimated=estimatedValues, londonWorkhouse,  londonWorkhouseEstimated=estimatedLondonWorkhouseValues) %>%
+  filter(between(year, 1681, 1713)) %>%
+  # inner_join is fine here but needs to be used with care because there have to be matching values in *both* tables. 
+  # sometimes you'd need left_join or full_join, but they can be slower.
+  inner_join(
+    c2_ob %>%
+      select(year, oldBailey= totalCorrected, oldBaileyEstimated = estimatedOldBaileyValues ),
+    by="year")
+
+c2_brd_ob_join %>%
+  kable() %>%
+  kable_styling() %>%
+  scroll_box(height = "400px")
+```
+\
+And then gather...
+
+```{r}
+
+c2_brd_ob_join %>%
+  gather("k", "v", bridewell:oldBaileyEstimated) %>%
+  kable() %>%
+  kable_styling() %>%
+  scroll_box(height = "400px")
+```
+\
+(In R, there are nearly always at least two ways to do the same thing...)
+
+Once the data is in the right shape the ggplot code for a line graph is straightforward, but there are some aesthetic additions:
+
+- use of "linetype" to style the estimated values
+- by default ggplot orders legend labels alphabetically so I need to manually re-order
+- make nicer display labels (and tweak the legend margins slightly)
+- set x and y axis labels
+- manual scales give fine grained control over line colours and styling
+- the title is unusually long, so it's split into title and subtitle
+
+```{r}
+
+# set order of variables in legends
+c2_fig2_brk <- 
+  c("bridewell", "bridewellEstimated", "oldBailey", "oldBaileyEstimated", "londonWorkhouse", "londonWorkhouseEstimated")
+
+# set nice labels
+c2_fig2_labels <- 
+  c("Bridewell", "Estimated\nBridewell", "Old Bailey", "Estimated\nOld Bailey", "London\nWorkhouse", "Est. London\nWorkhouse")
+
+
+c2_ob_brd_long_ggplot <-
+c2_ob_brd_long %>%
+  # your aes() stuff can go inside either ggplot() or geom_line()
+  # nb linetype for line styling
+  ggplot(aes(x=factor(year), y=v, colour=k, group=k, linetype=k)) +
+  geom_line() +
+  
+  # finesse axis labels
+  scale_y_continuous(breaks = seq(0,1600,200), limits = c(0,1600)) +
+  scale_x_discrete(breaks = seq(1681, 1714, 2)) +
+  
+  # manually control assignment of line colours and add the labels configuration set up earlier
+  scale_colour_manual(
+    values= c("#D55E00", "#D55E00", "#E69F00", "#E69F00", "#0072B2", "#0072B2"), 
+    breaks=c2_fig2_brk, 
+    labels= c2_fig2_labels) +
+  
+  # and ditto the linetypes
+  # (not at all sure why I gave each series different styling for the estimated values)
+  scale_linetype_manual(
+    values = c("solid", "dashed", "solid", "dotted", "solid", "dotdash"), 
+    breaks=c2_fig2_brk, 
+    labels= c2_fig2_labels) +
+  
+  # hide unwanted legend title
+  guides(colour=guide_legend(title=NULL), 
+         linetype=guide_legend(title=NULL)) +
+  
+  # some nitpicky fiddling with legend margins
+  theme(legend.text = element_text(margin = margin(t = 0.1, b=0.1, unit = "cm")) ) +
+  
+  # and add nice display labels
+  labs(x="year", y="number", 
+       title="Figure 2.2: Prosecutions and commitments, 1681–1714", 
+       subtitle="The Old Bailey, Bridewell and London Workhouse")
+```
+
+
+```{r c2_fig2_crime_pros_1681, fig.cap='Figure 2.2: Prosecutions and commitments, 1681–1714: The Old Bailey, Bridewell and London Workhouse'}
+
+c2_ob_brd_long_ggplot 
+
+```
+
+A reminder of what the original looked like. 
+
+
+![](img/fig2_2.png)
+
+
+Online dataset: [Crime Prosecutions (xlsx)](datasets/Crime_Prosecutions.xlsx){.data_download}
+
+
+
+
+## F2.3: Vice Offences {#c-2-6 }
+
+This one is simpler. 
+
+```{r c2_fig3_vice_prosecutions_data}
+
+c2_lm_books <-
+  read_xlsx("datasets/LM_Waiting_and_Charge_Books_1686-1733.xlsx", sheet = "Data", skip = 2)  %>%
+  clean_names(case="lower_camel")
+
+c2_lm_books_ggplot <-
+c2_lm_books %>%
+  # no idea why I decided to filter the years like this instead of using between()
+  filter(year %in% c(1686, 1687, 1688, 1689, 1690, 1691, 1692, 1693, 1694) ) %>%
+  gather("type", "counts", prostitution:total) %>%
+  ggplot(aes(x=year, y= counts, group=type, colour=type)) +
+  geom_line() +
+  # didn't bother to create the breaks and labels beforehand this time
+  scale_colour_manual(
+    breaks=c("total", "drunkenness", "prostitution", "sabbathBreaking", "swearing"),  
+    labels=c("Total", "Drunkenness", "Prostitution", "Sabbath\nBreaking", "Swearing"), 
+    values = c("#D55E00", "#E69F00", "#0072B2", "#F0E442", "#CC79A7"))+
+  guides(colour=guide_legend(title=NULL))  +
+  labs(x="year", y="number of offences") +
+  
+  # using patchwork::plot_annotation() a bit fudgily here for cosmetic reasons: 
+  # this was a particularly long plot title and it creates more space to fit it in 
+  plot_annotation(title="Figure 2.3: Vice offences recorded in Lord Mayor's waiting and charge books, 1686-1694", theme = theme(plot.title = element_text(hjust = 0.5)))
+
+
+```
+
+
+```{r, c2_fig3_vice_prosecutions_line, fig.cap="Figure 2.3: Vice offences recorded in Lord Mayor's waiting and charge books, 1686-1694"}
+
+c2_lm_books_ggplot 
+```
+
+Online dataset: [LM Waiting and Charge Books 1686-1733 (xlsx)](datasets/LM_Waiting_and_Charge_Books_1686-1733.xlsx){.data_download}
+
+
+

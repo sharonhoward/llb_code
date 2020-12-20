@@ -1,0 +1,374 @@
+---
+title: "Chapter 5: Reformers and their discontents: 1748--1763"
+---
+
+
+[link to chapter 5](http://www.londonlives.org/book/chapter5.html)
+
+
+## Packages
+
+```{r c5_packages}
+
+library(xlsx)
+library(readxl)
+library(janitor)
+library(lubridate)
+library(scales)
+library(patchwork)
+library(tidyverse)
+
+
+
+# ggplot_extras ####
+
+theme_set(theme_minimal()) # set preferred ggplot theme 
+theme_update(plot.title = element_text(size = rel(1.1), hjust = 0)) # adjustments to theme
+update_geom_defaults("line", list(size = 0.85)) 
+```
+
+
+
+
+
+## Wages and Prices {#c-5-2 }
+
+This uses a moving average, using the [zoo](https://cran.r-project.org/web/packages/zoo/index.html) package.
+
+Also facet_wrap, which splits the visualisation into sub-charts, aka "small multiples".
+
+```{r c5_wages_prices_data}
+
+# zoo::rollmean() for moving average
+wages_prices <-
+  read_excel("datasets/Wages_and_Prices.xlsx", skip = 2, sheet = "Wages and Prices") %>%
+  clean_names(case="lower_camel") %>%
+  mutate(`5movinga` = zoo::rollmean(averageColumnsDH, k=5, fill=NA))
+
+
+wages_prices_long <-
+  wages_prices %>%
+  filter(between(year, 1739, 1800)) %>%
+  select(year, bricklayerPbh, bricklayerLw, carpenterPbh, carpenterLw, bricklayersLabourerPbh, bricklayersLabourerLw, average= averageColumnsDH, `5movinga`) %>%
+  gather("k", "v", bricklayerPbh:`5movinga`) %>%
+  mutate(wage_type = case_when(
+    str_detect(k, "Labourer") ~ "bricklayers labourers",
+    str_detect(k, "^brick") ~ "bricklayers",
+    str_detect(k, "^carp") ~ "carpenters",
+    TRUE ~ "average"
+  )) %>%
+  mutate(src = case_when(
+    str_detect(k, "Pbh") ~ "PBH",
+    str_detect(k, "Lw") ~ "LW",
+    k=="average" ~ "average",
+    k=="5movinga" ~ "ma5"
+  ))
+
+
+# use slightly thinner lines than default because the charts are small
+c5_wages_prices_long_ggplot <-
+wages_prices_long  %>%
+  ggplot(aes(x=year, y=v, colour=src)) +
+  geom_line(size=0.5) +
+  scale_y_continuous(breaks = seq(0, 180, 30), limits = c(0,180)) +
+  scale_x_continuous(limits=c(1740,1800), breaks=seq(1740,1800,10)) +
+  scale_colour_manual(values=c("#0072b2", "#56b4e9", "#D55E00", "#E69F00"), 
+                      breaks = c("average", "ma5", "PBH", "LW"), 
+                      labels=c("average", "5 year\nmoving\naverage", "PBH", "LW")) +
+  facet_wrap(~wage_type) +
+  labs(x="year", y="", colour=NULL) +
+  theme(legend.key.height = unit(1.7, "line")) +
+  plot_annotation(title = "Figure 5.1: Real wage rates of London bricklayers, carpenters and their labourers, 1744-1800", theme = theme(plot.title = element_text(hjust = 0.5)))
+```
+
+
+
+
+
+
+
+
+```{r c5_fig1_wages_prices, fig.cap="Figure 5.1: Real wage rates of London bricklayers, carpenters and their labourers, 1744-1800"}
+
+c5_wages_prices_long_ggplot
+
+```
+
+
+Online dataset: [Wages and Prices (xlsx)](datasets/Wages_and_Prices.xlsx){.data_download}
+
+
+
+
+## Crime Prosecutions {#c-5-4 }
+
+```{r c5_crime_pros_1745_data}
+
+c5_ob <-
+  read_xlsx("datasets/Crime_Prosecutions.xlsx", sheet = "Old Bailey", skip = 2) %>%
+  clean_names(case="lower_camel")
+
+c5_bridewell <-
+  read_xlsx("datasets/Crime_Prosecutions.xlsx", sheet = "Bridewell", skip = 2) %>%
+  clean_names(case="lower_camel")
+
+c5_ob_brd_long <-
+  bind_rows(
+    c5_bridewell %>% filter(between(year, 1745,1765)) %>%
+      select(year, bridewell, londonWorkhouse, bridewellEstimated=estimatedValues, londonWorkhouseEstimated= estimatedLondonWorkhouseValues) %>%
+      gather("k", "v", bridewell:londonWorkhouseEstimated)
+    ,
+    c5_ob %>% filter(between(year, 1745, 1765)) %>%
+      select(year, v= totalCorrected) %>%
+      mutate(k="oldBailey")
+  )
+
+
+# http://www.cookbook-r.com/Graphs/Bar_and_line_graphs_(ggplot2)/#line-graphs
+# linetype: integer or name: 0 = blank, 1 = solid, 2 = dashed, 3 = dotted, 4 = dotdash, 5 = longdash, 6 = twodash
+
+c5_ob_brd_long_ggplot <-
+c5_ob_brd_long %>%
+  ggplot(aes(x=factor(year), y=v, colour=k, group=k, linetype=k)) +
+  geom_line() +
+  scale_y_continuous(breaks = seq(0, 700, 100), limits = c(0,700)) +
+  scale_x_discrete(breaks = seq(1745, 1765, 2)) +
+  # info for colour scale and linetype scale must match...
+  scale_colour_manual(values=c("#0072B2", "#D55E00", "#D55E00", "#E69F00", "#E69F00"),
+                      breaks=c("oldBailey", "bridewell", "bridewellEstimated", "londonWorkhouse", "londonWorkhouseEstimated"),
+                      labels=c("Old Bailey", "Bridewell", "Estimated\nBridewell", "London \nWorkhouse", "Est. London \nWorkhouse")
+  ) +
+  scale_linetype_manual(values = c("solid" , "solid", "dashed", "solid", "dotted"),
+                        breaks=c("oldBailey", "bridewell", "bridewellEstimated", "londonWorkhouse", "londonWorkhouseEstimated"),
+                        labels=c("Old Bailey", "Bridewell", "Estimated\nBridewell", "London \nWorkhouse", "Est. London \nWorkhouse")
+  ) +
+  guides(colour=guide_legend(title=NULL), linetype=guide_legend(title=NULL)) +
+  theme(legend.text = element_text(margin = margin(t = 0.1, b=0.1, unit = "cm")) )  +
+  labs(x="year", y=NULL, title = "Figure 5.2: Prosecutions and commitments, 1745-1765", subtitle="The Old Bailey, Bridewell and London Workhouse")  # title's too long for 1 line!
+```
+
+
+
+
+
+```{r c5_fig2_ob_1745_line, fig.cap="Figure 5.2: Prosecutions and commitments, 1745-1765: The Old Bailey, Bridewell and London Workhouse"}
+
+c5_ob_brd_long_ggplot
+
+```
+
+
+
+Online dataset: [Crime Prosecutions (xlsx)](datasets/Crime_Prosecutions.xlsx){.data_download}
+
+
+
+
+
+
+
+## Poor Law Expenditure {#c-5-5 }
+
+```{r c5_scd_poor_data}
+
+scd_poor_spend <-
+  read_excel("datasets/St_Clement_Danes_Poor_Law_Expenditure_1706-1803.xlsx", skip=2, sheet = "St Clement") %>%
+  clean_names(case="snake")
+
+c5_scd_poor_spend_ggplot <-
+scd_poor_spend %>%
+  filter(between(year, 1740, 1765)) %>%
+  select(year, monthly_total_poor_law_accounts) %>%
+  ggplot(aes(x=year, y=monthly_total_poor_law_accounts)) +
+  geom_line() +
+  scale_y_continuous(limits = c(1700, 3300), breaks = seq(1700, 3300, 200)) +
+  labs(y="£", title = "Figure 5.3: St Clement Danes, poor law expenditure, 1740-1765")
+```
+
+
+
+```{r c5_fig2_scd_poor_spending, fig.cap="Figure 5.3: St Clement Danes, poor law expenditure, 1740-1765."}
+
+c5_scd_poor_spend_ggplot
+
+```
+
+
+
+Online dataset: [St Clement Danes Poor Law Expenditure 1706-1803 (xlsx)](datasets/St_Clement_Danes_Poor_Law_Expenditure_1706-1803.xlsx){.data_download}
+
+
+
+
+
+
+
+
+## Gin {#c-5-12 }
+
+```{r c5_ob_gin_data}
+
+gin <-
+  read_excel("datasets/Gin_Geneva_in_Old_Bailey_Trials.xlsx", skip=2, sheet="Data") %>%
+  clean_names(case="snake")
+
+gin_long <-
+  gin %>%
+  mutate(movinga = zoo::rollmean(percent_trials_with_gin_or_geneva, k=5, fill=NA)) %>%
+  select(year, pct= percent_trials_with_gin_or_geneva, movinga) %>%
+  gather("k", "v", pct:movinga)
+
+
+
+c5_gin_long_ggplot <-
+gin_long %>%
+  ggplot(aes(x=year, y=v, colour=k, group=k, linetype=k)) +
+  geom_line() +
+  scale_y_continuous(limits = c(0,6), breaks=seq(0,6,1)) +
+  scale_x_continuous(breaks = seq(1715, 1780, 5)) +
+  scale_colour_manual(breaks = c("pct", "movinga"), 
+                      labels=c("percentage", "moving\naverage"), 
+                      values=c("#D55E00","#E69F00")) +
+  scale_linetype_manual(breaks = c("pct", "movinga"), 
+                        labels=c("percentage", "moving\naverage"), 
+                        values=c("solid", "dashed")) +
+  guides(colour=guide_legend(title=NULL), linetype=guide_legend(title=NULL)) +
+  labs(y="% of trials", title = "Figure 5.7: Old Bailey trial reports including 'Gin' or 'Geneva', 1715-1780")
+```
+
+
+
+```{r c5_fig7_ob_gin, fig.cap="Figure 5.7: Old Bailey trial reports including 'Gin' or 'Geneva', 1715-1780"}
+
+c5_gin_long_ggplot
+
+```
+
+
+Online dataset: [Gin/Geneva in Old Bailey Trials (xlsx)](datasets/Gin_Geneva_in_Old_Bailey_Trials.xlsx){.data_download}
+
+
+
+
+
+
+
+## Death Sentences and Executions {#c-5-17 }
+
+```{r c5_fig8_death_and_executions_data}
+
+ob_death_executions_1749 <-
+  read_excel("datasets/Death_Sentences_and_Executions_1749-1806.xlsx", skip=2, sheet="Data") %>%
+  clean_names(case="snake") %>%
+  filter(between(year, 1749, 1774))
+
+
+c5_ob_death_executions_1749_ggplot <-
+  
+ob_death_executions_1749 %>%
+  mutate(not_executed = condemned-executed) %>%
+  select(-percent_executed, -condemned) %>%
+  pivot_longer(executed:not_executed, names_to = "condemned", values_to = "v") %>%
+  
+  ggplot(aes(x=year, y=v, fill=condemned)) +
+  geom_col()+
+  scale_x_continuous(breaks=seq(1750, 1774, 2), expand = c(0,0))  +
+  scale_y_continuous(breaks=seq(0, 100, 20)) +
+  scale_fill_manual(values=c("#D55E00", "#E69F00"), 
+                    labels = c("executed", "not executed")) +
+  labs(fill=NULL, y="sentences") +
+  
+ob_death_executions_1749 %>%
+  select(year, percent_executed) %>%
+  mutate(movave = zoo::rollmean(percent_executed, k=5, fill=NA)) %>%
+  gather(k,v, percent_executed:movave) %>%
+  ggplot(aes(year, v, colour=k, linetype=k)) +
+  geom_line() +
+  scale_x_continuous(breaks=seq(1750, 1774, 2), expand = c(0,0)) +
+  scale_y_continuous(limits = c(0,100)) +
+  scale_colour_manual(values=c("#0072B2", "#0072B2"), 
+                      breaks=c("percent_executed", "movave"), 
+                      labels = c("% executed", "5 year \nmoving average") ) +
+  scale_linetype_manual(values=c("solid", "dotted"), 
+                        breaks=c("percent_executed", "movave"), 
+                        labels = c("% executed", "5 year \nmoving average") ) +
+  labs(y="% executed", colour=NULL, linetype=NULL) +
+  
+  plot_annotation(title = "Figure 5.8: Old Bailey death sentences and executions, 1749-1774") +
+  plot_layout(ncol=1, heights=c(4,3))
+```
+
+
+
+```{r c5_fig8_ob_death_and_executions, fig.cap="Figure 5.8: Old Bailey death sentences and executions, 1749-1774."}
+
+c5_ob_death_executions_1749_ggplot
+
+```
+
+Online dataset: [Death Sentences and Executions 1749-1806 (xlsx)](datasets/Death_Sentences_and_Executions_1749-1806.xlsx){.data_download}
+
+
+
+
+## Old Bailey Punishments {#c-5-18 }
+
+
+```{r c5_fig9_ob_pun_1745_data}
+
+c5_punob <-
+  read_xlsx("datasets/Punishment_Statistics_1690-1800.xlsx", sheet = "Old Bailey Punishments", skip=2) %>%
+  clean_names(case="lower_camel") %>%
+  filter(x1 !="Total") %>%
+  rename(year=x1) %>% mutate(year = as.double(year))
+
+pun_long_1745 <-
+  c5_punob %>%
+  filter(between(year, 1745, 1763)) %>%
+  select(year, total, corporal, death, transportation, imprisonment) %>%
+  gather("k", "v",corporal:imprisonment) %>%
+  mutate(pc = v/total*100)
+
+
+c5_pun_long_1745_ggplot <-
+pun_long_1745  %>%
+  mutate(pcz = case_when(
+    k %in% c("corporal", "transportation") ~ pc,
+    TRUE ~ NA_real_
+  )) %>%
+  mutate(k_trend = paste(k, "trend")) %>%
+  ggplot(aes(x=factor(year), y=pc, colour=k, group=k, linetype=k)) +
+  geom_line() +
+  geom_smooth(aes(y=pcz, colour=k_trend, linetype=k_trend), se=FALSE, na.rm=TRUE) +
+  scale_y_continuous(breaks = seq(0,80,10), limits = c(0,80)) +
+  scale_colour_manual(values=c("#D55E00", "#D55E00", "#F0E442", "#0072B2", "#0072B2", "#E69F00"), 
+                      breaks=c("transportation", "transportation trend", "death", "corporal", "corporal trend", "imprisonment"), 
+                      labels=c("Transportation", "Transportation\n(trend)", "Death", "Corporal", "Corporal (trend)", "Imprisonment")) +
+  scale_linetype_manual(values=c("solid", "dotted", "solid", "solid", "dotted", "solid"), 
+                        breaks=c("transportation", "transportation trend", "death", "corporal", "corporal trend", "imprisonment"), 
+                        labels=c("Transportation", "Transportation\n(trend)", "Death", "Corporal", "Corporal (trend)", "Imprisonment")) +
+  scale_x_discrete(breaks = seq(1745, 1763, 2)) +
+  guides(colour=guide_legend(title=NULL), linetype=guide_legend(title=NULL)) +
+  labs(x="year", y="% of sentences", title = "Figure 5.9: Old Bailey punishment sentences, 1745-1763")
+
+```
+
+
+
+
+
+```{r c5_fig9_ob_punishment_sentences_1745, fig.cap="Figure 5.9: Old Bailey punishment sentences, 1745-1763"}
+
+c5_pun_long_1745_ggplot
+
+```
+
+
+
+Online dataset: [Punishment Statistics 1690-1800 (xlsx)](datasets/Punishment_Statistics_1690-1800.xlsx){.data_download}
+
+
+
+
+
+
