@@ -35,7 +35,7 @@ I had nearly finished work when I saw this [guide to dataviz for the colorblind]
 
 The .Rmd files (and data) can be found [here](https://github.com/sharonhoward/llb_code).
 
-Using the .Rmd files, it should in theory be possible to replicate the graphs using the code and the [datasets](datasets/), but I can't guarantee they'll work without any adjustments in every environment. (The book was built in 2020 on a MacBook running High Sierra (OS X 10.13.6), R v3.5 and RStudio v1.2.) If you have difficulties, I may be able to answer simple queries on Twitter (@sharon_howard).
+Using the .Rmd files, it should in theory be possible to replicate the graphs using the code and the datasets, but I can't guarantee they'll work without any adjustments in every environment. (The book was built in 2020 on a MacBook running High Sierra (OS X 10.13.6), R v3.5 and RStudio v1.2.) If you have difficulties, I may be able to answer simple queries on Twitter (@sharon_howard).
 
 
 ## List of Contents
